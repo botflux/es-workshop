@@ -45,10 +45,10 @@ type LightState =
     | Off
 
 // this type represent the current state
-type State = InitialState
+type State = { CurrentState: LightState; SwitchOnTimes: int; Broken: bool }
 
 // this is the value of the initial state
-let initialState = InitialState
+let initialState = { CurrentState = Off; SwitchOnTimes = 0; Broken = false }
 
 //-----------------------
 // Domain Implementation
@@ -57,14 +57,27 @@ let initialState = InitialState
 // Step 1: 
 // Implement this function with the simplest
 // implementation that compile, but that take no decision
-let decide (cmd: Command) (state: State) : Event list = 
-    failwith "Not implented"
+let decide (cmd: Command) (state: State) : Event list =
+    if state.Broken then []
+    else
+        match cmd with
+        | SwitchOn ->
+            if state.SwitchOnTimes >= 2 then [ Broke ]
+            else
+                if state.CurrentState = On then []
+                else [ SwitchedOn ]
+        | SwitchOff ->
+            if state.CurrentState = Off then []
+            else [ SwitchedOff ]
 
 // Step 2:
 // Implement this function with the simplest
 // implementation that compile, but that don't evolve anything
 let evolve (state: State) (event: Event) : State =
-    failwith "Not implemented"
+    match event with
+    | SwitchedOn -> { state with CurrentState = On; SwitchOnTimes = state.SwitchOnTimes + 1 }
+    | SwitchedOff -> { state with CurrentState = Off }
+    | Broke -> { state with Broken = true }
 
 //---------------------
 // Tests on the Domain
@@ -80,7 +93,8 @@ let evolve (state: State) (event: Event) : State =
 // where agg is the aggregation function and seed the initial value
 
 let (=>) (events: Event list) (cmd: Command) : Event list =
-    failwith "Not implemented"
+    let newState = events |> List.fold evolve initialState
+    decide cmd newState
 
 // this operator is an equality assertion 
 let (==) actual expected =
@@ -197,7 +211,7 @@ let appendEvents filename events =
 // and append them to the end of the file
 let execute cmd file =
     let events = loadEvents file
-    let newEvents = []
+    let newEvents = events => cmd
     appendEvents file newEvents
     printfn "%A" newEvents
 
@@ -206,8 +220,8 @@ let execute cmd file =
 // from stored events 
 let queryState file =
     let events = loadEvents file
-
-    printfn "%A" events
+    let state = events |> List.fold evolve initialState
+    printfn "%A" state
 
 // this is the entry point for command line parsing
 [<EntryPoint>]
